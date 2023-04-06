@@ -26,28 +26,6 @@ Box.prototype.draw = function(context) {
         context.strokeRect(this.points.leftX, this.points.topY, this.points.rightX - this.points.leftX, this.points.bottomY - this.points.topY);
     }
 }
-// Box.prototype.checkCollisions = function(player) {
-//     if (player.x <= this.x1) {
-//         if (point.y >= this.tip) {
-//             if (point.y <= this.y) {
-//                 if (point.x >= this.x2) {
-//                     this.basey = point.y-this.tip
-//                     this.basex = point.x - this.x
-//                     if (this.basex == 0) {
-//                         return true
-//                     }
-//                     this.slope = this.basey/this.basex
-//                     if (this.slope >= this.accept1) {
-//                         return true
-//                     } else if (this.slope <= this.accept2) {
-//                         return true
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return false;
-// }
 
 // PLAYER
 function Player (x, y, player) {
@@ -60,7 +38,7 @@ function Player (x, y, player) {
     this.gravity = 0.2;
     this.friction = 0.08;
     this.vy = 0;
-    this.onFloor = false;
+    this.onFloor = true;
 }
 Player.prototype.draw = function(context) {
     context.drawImage(this.name, this.x, this.y, this.width, this.height);
@@ -75,10 +53,16 @@ Player.prototype.moveLeft = function() {
     this.x -= this.speed;
 }
 Player.prototype.update = function(width, height) {
-    if (!this.onFloor) {
+    // check if gravity applies and if jumping
+    if (this.onFloor) {
+        this.jumpTime = 0;
+        this.g = 0.2;
+    } else {
         this.vy += this.gravity;
         this.y += this.vy;
     }
+
+    // check if hit top or bottom wall
     if (this.y <= 0) {
         this.y = 0;
         this.vy = 0;
@@ -86,12 +70,41 @@ Player.prototype.update = function(width, height) {
         this.y = height - this.height;
         this.vy = 0;
     }
+
+    // check if hit left or right wall
     if (this.x <= 0) {
         this.x = 0;
     } else if (this.x >= width) {
         this.x = width;
     }
 };
+Player.prototype.checkCollisions = function(boxes) {
+    // check if player hit floor
+    checkCollision(player, b){
+        player.x <= b.position.x + b.scale.x &&
+        player.x + a.scale.x >= b.position.x &&
+        a.position.y <= b.position.y + b.scale.y &&
+        a.position.y + a.scale.y >= b.position.y;
+    }
+    for (box of boxes) {
+        if (checkCollision(this, box)) {
+            blockGameObject(this, box);
+        }
+    }
+    if (bottomWall(this) + this.vy > box.points.topY &&
+        bottomWall(this) <= box.points.topY &&
+        rightWall(this) > box.points.leftX &&
+        leftWall(this) < box.points.rightX) {
+        console.log("hit floor");
+        this.vy = 0;
+        this.onFloor = true;
+        this.y = box.points.topY - this.height;
+    }
+
+    // check if player hit ceiling
+    // check if player hit right wall
+    // check if player hit left wall
+}
 
 // GAME
 function Game () {
@@ -174,34 +187,18 @@ Game.prototype.update = function () {
     else if (document.rightPressed && rightWall(this.player) < this.width) {
         this.player.moveRight();
     }
-
     for (block of this.bounds) {
-        if (
-            bottomWall(this.player) + this.player.vy >= block.points.topY && 
-            topWall(this.player) + this.player.vy <= block.points.topY && 
-            leftWall(this.player) <= block.points.rightX && 
-            rightWall(this.player) >= block.points.leftX
-        ) {
-            console.log("on floor", block.points)
-            this.player.y = block.points.topY - this.player.height;
-            this.player.onFloor = true;
+        if ((this.player.y > block.points.bottomY && this.player.y > block.points.topY) || this.player.y < block.points.topY) {
+            this.player.checkCollisions(block);
         }
-        else if (
-            topWall(this.player) + this.player.vy <= block.points.bottomY && 
-            bottomWall(this.player) + this.player.vy >= block.points.bottomY && 
-            leftWall(this.player) <= block.points.rightX && 
-            rightWall(this.player) >= block.points.leftX
-        ) {
-            this.player.y = block.points.bottomY;
-            this.player.vy = 0;
-        }
-        // console.log(block.points.leftX - leftWall(this.player));
-        // if (
-        //     rightWall(this.player) > block.points.leftX &&
-        //     block.points.leftX - rightWall(this.player) <= 5  
+        // else if (
+        //     topWall(this.player) + this.player.vy <= block.points.bottomY && 
+        //     bottomWall(this.player) + this.player.vy >= block.points.bottomY && 
+        //     leftWall(this.player) <= block.points.rightX && 
+        //     rightWall(this.player) >= block.points.leftX
         // ) {
-        //     console.log("hit left wall");
-        //     // this.player.x = this.player.x - this.player.width / 2;
+        //     this.player.y = block.points.bottomY;
+        //     this.player.vy = 0;
         // }
     }
     this.player.update(this.width, this.height);
